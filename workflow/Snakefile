@@ -1,18 +1,6 @@
-# snakemake --resources mem_mb=700000 --slurm --default-resources \
-# slurm_account=ec85 runtime=4320 mem_mb_per_cpu=21000 cpus_per_task=4 \
-# --use-conda --cluster-cancel scancel --keep-going -j 120
+# snakemake --resources mem_mb=16000 --executor slurm --default-resources slurm_account=ec85 runtime=120 mem_mb_per_cpu=1000 cpus_per_task=16 --cores 16 --use-conda --keep-going -j 48
 
-# region:
-# snakemake --resources mem_mb=700000 --slurm --default-resources \
-# slurm_account=ec85 runtime=30 mem_mb_per_cpu=1100 cpus_per_task=4 \
-# --use-conda --cluster-cancel scancel --keep-going -j 120
-
-
-# TODO: Default profile is Fox, HPC, profile
-
-
-configfile: "config/config_james.yaml"
-
+configfile: "config/config.yaml"
 
 import itertools
 
@@ -21,14 +9,21 @@ import pathlib
 
 date_range=["01-01","12-31"]
 
+# Technologies which will be maximised / minimised for
+#technologies = ['Solar', 'Windoffshore', 'Windonshore', 'NuclearEPR']
+technologies = ['Solar']
+#optimisations = ['maximizing', 'minimizing']
+optimisations = ['maximizing']
+
+#slacklevels = ['0.05', '0.10', '0.15']
+slacklevels = ['0.05']
+
+clusterpath = "/cluster/work/projects/ec85/MENOFS_git/EU10CS/results/"
 
 inputyears = [
-    # "1995",
     "2010"
 ]
 
-# TODO: make grid_regions work
-grid_regions = []
 aggregated_regions = [
     "AT",
     "BE",
@@ -92,9 +87,7 @@ pd.DataFrame(aggregated_regions).assign(
 )
 
 spatials = [
-    # "grid",
     "region",
-	#"nuts2"
 ]
 
 cutoff_values = {"solar": 0.09, "onwind": 0.15, "offwind": 0.20}
@@ -111,15 +104,10 @@ spatials = scenarios.spatials.to_list()
 
 
 # in grams per kWh
-co2target = round(0, 1)
+co2target = round(0, 2)
 
-# gamsfilesha256 = "d8e033699604d4474a1c9db59140749509f30383dee532c1e85165617620776b"
-# gamsfilesha256 = "af4a97e52ff41b137a24fb517b03e0e8268d879b01c7aefd7cae3074467ebad1"
-# gamsfilesha256 = "b8ff95b0bc41fa7bd18ff192eac69b54ead25d72a851656c0d9e8fe41ca50177"
-# gamsfilesha256 = "9b1b86c582b18822fcf9c65045f9c68605e951957cd934cc1713f8cf00a5f375"
-# gamsfilesha256 = "7c58219c0ab4320c806c0460ebba547c10838313c6a1f10f6e6640aab90a4838"
-# gamsfilesha256 = "9cced6b80dad705f6963e4dee1c48af4b8170d42444bb269b049ea8627d6c0e5"
-gamsfilesha256 = "0e8a55bad6b66243e5af8defd6279a2ce985ed6cf19244b097f08a75d1215c85"
+#gamsfilesha256 = "0e8a55bad6b66243e5af8defd6279a2ce985ed6cf19244b097f08a75d1215c85"
+gamsfilesha256 = "0460f672faa655f8495ace9bf2fb98411cc1245bda3d3eae10a7dc909689df7e"
 # Get current working directory
 
 cwd = pathlib.Path().resolve()
@@ -161,9 +149,13 @@ logpath = yearonlypart + scenariopart
 localrules:
     all,
     build_gams,
+    build_shapes,
     build_cplex_opt,
+    build_vre_cf_grid,
+    build_vre_cf_inputs,
     build_technoeconomic_inputs,
     ensure_gams_template,
+    build_vre_land_avail,
     rename_demand_file,
     build_zones_file,
     build_vre_areas_file,
@@ -177,12 +169,25 @@ localrules:
     build_vre_csv,
     compress_vre_gdx,
     compress_hydrores_inflow,
-    convert_results_db_parquet,
+    build_inputs,
+    change_objective,  
+    slack_change,
+    set_cost_optimal,
 
 
 rule all:
     input:
-        expand(modelpath / "results.db.compressed", zip, year=years, spatial=spatials),
+        #expand(modelpath / "results.db", zip, year=years, spatial=spatials),
+        expand(
+            clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/results.gdx",
+            country=aggregated_regions, 
+            technology=technologies, 
+            optimisation=optimisations, 
+            slacklevel=slacklevels,
+            year=years,
+            spatial=spatials,
+            ),
+        
 
 
 rule ensure_gams_template:
@@ -236,10 +241,10 @@ rule build_technoeconomic_inputs:
 		"resources/gb_ext_scenarios.xls",
 		"resources/highres_gb_ext_database.ods",
 		europecountriescsvlocation="resources/europe_countries.csv",
-		europedemandcsvlocation="resources/europe_demand_2006-2015.csv",
+		europedemandcsvlocation="resources/europe_demand_1950-2021.csv",
 		data2dd="workflow/scripts/data2dd_funcs.py",
 	conda:
-		"envs/build_technoeconomic.yml"
+		"envs/highres_environment.yaml"
 	output:
 		modelpath / "{year}_temporal.dd",
 		modelpath / "BASE_co2_budget.dd",
@@ -270,9 +275,11 @@ rule build_shapes:
 		/ "geodata/onshore/shapes/NUTS_RG_60M_2021_4326.geojson",
 		eurooffshoreshape=shared_input_path
 		/ ("geodata/offshore/BOTTOM_MOUNTED_EUROPE_NUTS0" "_NORWAY_NUTS3.geojson"),
+	conda:
+		"envs/highres_environment.yaml"
 	output:
-		onshoreshape="intermediate_data/{spatial}/shapes/europe_onshore.geojson",
-		offshoreshape="intermediate_data/{spatial}/shapes/europe_offshore.geojson",
+		onshoreshape= resultspath / "intermediate_data/{spatial}/shapes/europe_onshore.geojson",
+		offshoreshape= resultspath / "intermediate_data/{spatial}/shapes/europe_offshore.geojson",
 	params:
 		aggregated_regions=aggregated_regions,
 	notebook:
@@ -284,8 +291,10 @@ rule build_vre_cf_grid:
 		weatherdata=shared_input_path / "weatherdata/europe_{year}.nc",
 		euroshape=rules.build_shapes.output.onshoreshape,
 		eurooffshoreshape=rules.build_shapes.output.offshoreshape,
+	conda:
+		"envs/highres_environment.yaml"
 	output:
-		cf_file="intermediate_data/{spatial}/weather/europe_cf_{year}.nc",
+		cf_file= resultspath / "intermediate_data/{spatial}/weather/europe_cf_{year}.nc",
 	resources:
 		mem_mb=50000,  # TODO: Find out how much this rule needs,
         # should be constant (regional/grid)
@@ -310,6 +319,8 @@ rule build_vre_land_avail:
 		weatherdata=shared_input_path / "weatherdata/europe_{year}.nc",
 		cfdata=rules.build_vre_cf_grid.output.cf_file,
 		corine=shared_input_path / "geodata/onshore/corine.tif",
+	conda:
+		"envs/highres_environment.yaml"
 	output:
         # FIXME the file indreg is only necessary when we run on grid cell
         # currently when we run with region, we create an empty file
@@ -340,6 +351,8 @@ rule build_vre_cf_inputs:
 		grid_areassolar = rules.build_vre_land_avail.output.grid_areassolar,
 		grid_areaswindonshore = rules.build_vre_land_avail.output.grid_areaswindonshore,
 		grid_areaswindoffshore = rules.build_vre_land_avail.output.grid_areaswindoffshore,
+	conda:
+		"envs/highres_environment.yaml"
 	output:
 		capfacfile=temp(modelpath / "capacity-factors_solar_{year}.csv"),
 		areassolar=temp(modelpath / "areas_solar.csv"),
@@ -363,7 +376,7 @@ rule build_hydro_capfac:
 		hydroresinfl=temp(modelpath / "inflow_hydro-res_{year}.csv"),
 		areashydro=temp(modelpath / "hydro_ror_area.csv"),
 	conda:
-		"envs/build_hydro_capfac.yml"
+		"envs/highres_environment.yaml"
 	params:
 		sharedinputpath=shared_input_path,
 		aggregated_regions=aggregated_regions,
@@ -393,6 +406,8 @@ rule build_vre_areas_file:
         areaswindon=rules.build_vre_cf_inputs.output.areaswindonshore,
         areaswindoff=rules.build_vre_cf_inputs.output.areaswindoffshore,
         data2dd=pathlib.Path(workflow.basedir) / "scripts",
+    conda:
+        "envs/highres_environment.yaml"
     output:
         modelpath / "vre_areas_{year}_.dd",
         regionsdd=modelpath / "_regions.dd",
@@ -480,7 +495,7 @@ rule build_vre_parquet:
     output:
         modelpath / "vre_{year}_.parquet",
     conda:
-        "envs/build_vre_parquet.yml"
+        "envs/highres_environment.yaml"
     script:
         "scripts/build_vre_parquet.py"
 
@@ -491,7 +506,7 @@ rule build_vre_csv:
     output:
         csvgdx=temp(modelpath / "vre_{year}_tmp.csv"),
     conda:
-        "envs/build_vre_parquet.yml"
+        "envs/highres_environment.yaml"
     script:
         "scripts/build_vre_csv.py"
 
@@ -575,7 +590,7 @@ rule run_model:
         str(modelpath) + "/highres.log",
     output:
         modelresults=protected(modelpath / "results.gdx"),
-        modelresultsdd=protected(modelpath / "results.db"),
+        #modelresultsdd=protected(modelpath / "results.db"),
     script:
         # TODO platform independence
         "scripts/run_gams.sh"
@@ -591,14 +606,64 @@ rule convert_results:
         gamspath + "gdx2sqlite -i {input} -o {output} -fast"
 
 
-rule convert_results_db_parquet:
+rule set_cost_optimal:
     input:
-        rules.run_model.output.modelresultsdd,
+        rules.convert_results.output.resultsdb,
     output:
-        compressdone=touch(modelpath / "results.db.compressed"),
-    resources:
-        mem_mb=50000,
-    conda:
-        "envs/build_vre_parquet.yml"
+        cost_opt=modelpath / "cost_optimal.tsv",
     script:
-        "scripts/convert_results_sqlite_parquet.py"
+        "scripts/set_cost_optimal.py"
+
+# This rule changes the slack level
+rule slack_change:
+    input:
+        "resources/mga_parameters.dd",
+        rules.set_cost_optimal.output.cost_opt,
+    output:
+        mgaparams=clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/mga_parameters.dd"
+    script:
+        "scripts/change_slack.py"
+
+# This rule takes the blueprint MGA .gms file and changes the objective for the different wildcards.
+rule change_objective:
+	input:
+		"resources/highres_mga.gms",
+		rules.slack_change.output.mgaparams,
+	output:
+		clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/highres_mga.gms"
+	script:
+		"scripts/change_MGA_objective.py"
+
+# This rule copies over model code to cluster
+rule copy_model_code:
+	input:
+		"resources/4_model_code_shared"
+	output:
+		directory(clusterpath + "4_model_code_shared")
+	shell:
+		"cp -r resources/4_model_code_shared/ /cluster/work/projects/ec85/MENOFS_git/EU10CS/results/4_model_code_shared"
+
+# This rule runs the MGA stuff
+rule run_mga:
+	input:
+		modelpath / "cplex.opt",
+		shared_code_path + "highres_data_input.gms",
+		shared_code_path + "highres_hydro.gms",
+		shared_code_path + "highres_results.gms",
+		shared_code_path + "highres_storage_setup.gms",
+		shared_code_path + "highres_storage_uc_setup.gms",
+		shared_code_path + "highres_uc_setup.gms",
+		clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/mga_parameters.dd",
+		clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/highres_mga.gms",
+		modelpath / "vre_{year}_.gdx",
+		"/fp/projects01/ec85/.bin/gams/gams41.5_linux_x64_64_sfx",
+	params:
+		gamspath=gamspath,
+		modelpath=str(modelpath),
+	log:
+		clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/highres_mga.lst",
+		clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/highres_mga.log",
+	output:
+		clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/results.gdx"
+	script:
+		"scripts/run_gams_mga.sh"
