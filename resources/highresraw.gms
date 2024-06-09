@@ -321,7 +321,7 @@ trans_links_dist_bidir(z_alias,z,trans)$(trans_links_dist(z,z_alias,trans) > 0.)
 
 $ifThen "%fx_trans%" == "YES"
 
-var_trans_pcap.FX(z,z_alias,trans)$(trans_links(z,z_alias,trans)) = trans_links_cap(z,z_alias,trans);
+var_trans_pcap.UP(z,z_alias,trans)$(trans_links(z,z_alias,trans)) = trans_links_cap(z,z_alias,trans);
 
 $else
 
