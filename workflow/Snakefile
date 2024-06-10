@@ -18,6 +18,17 @@ optimisations = ['maximizing']
 #slacklevels = ['0.05', '0.10', '0.15']
 slacklevels = ['0.05']
 
+cplex_options = """
+lpmethod 4
+solutiontype 2
+threads 16
+predual -1
+aggind 50
+BarColNZ 150
+barstartalg 3
+BarOrder 3
+"""
+
 clusterpath = "/cluster/work/projects/ec85/MENOFS_git/EU10CS/results/"
 
 inputyears = [
@@ -104,7 +115,7 @@ spatials = scenarios.spatials.to_list()
 
 
 # in grams per kWh
-co2target = round(0, 2)
+co2target = round(2, 1)
 
 #gamsfilesha256 = "0e8a55bad6b66243e5af8defd6279a2ce985ed6cf19244b097f08a75d1215c85"
 gamsfilesha256 = "0460f672faa655f8495ace9bf2fb98411cc1245bda3d3eae10a7dc909689df7e"
@@ -173,6 +184,7 @@ localrules:
     change_objective,  
     slack_change,
     set_cost_optimal,
+    cplex_opt,
 
 
 rule all:
@@ -643,10 +655,18 @@ rule copy_model_code:
 	shell:
 		"cp -r resources/4_model_code_shared/ /cluster/work/projects/ec85/MENOFS_git/EU10CS/results/4_model_code_shared"
 
+rule cplex_opt:
+	output:
+		cplex_mga = clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/cplex.opt"
+	run:
+		with open(output[0], "w+") as f:
+			f.writelines(cplex_options)
+
 # This rule runs the MGA stuff
 rule run_mga:
 	input:
-		modelpath / "cplex.opt",
+		#modelpath / "cplex.opt",
+		rules.cplex_opt.output.cplex_mga,
 		shared_code_path + "highres_data_input.gms",
 		shared_code_path + "highres_hydro.gms",
 		shared_code_path + "highres_results.gms",
