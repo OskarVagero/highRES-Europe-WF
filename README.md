@@ -4,7 +4,11 @@
 
 This repository contains the model framework for the paper titled _Philosophical views of justice and their implications in energy systems modelling_ and information on how to re-create the results.
 
-The modelling framework is based on [highRES](https://github.com/highRES-model/highRES-Europe-WF). Here we describe the main differences from previously published version. Documentation is available [here](https://highres-europe-wf.readthedocs.io/en/latest/).
+The modelling framework is based on the European version of the **high** temporal and spatial **r**esolution **e**lectricity **s**ystem model [highRES](https://github.com/highRES-model/highRES-Europe-WF). Here we describe the main differences from previously published versions. 
+
+Documentation is available [here](https://highres-europe-wf.readthedocs.io/en/latest/).
+
+If there are any kind of questions, please direct them to oskar.vagero@its.uio.no.
 
 ## Abstract
 
@@ -22,7 +26,7 @@ Although we have tried to generalise the workflow, it does require some manual c
 3. Activate the snakemake environment `conda activate snakemake`
 4. Download the required data from [Zenodo](www.google.com)
 5. Configure the workflow with the Snakefile and config.yaml so that the paths fit your setup. 
-6. Run the snakemake workflow `snakemake --cores 16 --use-conda
+6. Run the snakemake workflow `snakemake --cores 16 --use-conda` (the number of cores should be based on the individual setup)
 
 ## Model description
 highRES has been used in a number of other peer-reviewed papers. [Price and Zeyringer, 2022](https://doi.org/10.1016/j.softx.2022.101003) is the associated software publication, whereas [Price et al., 2023](https://doi.org/10.1016/j.energy.2022.125450) is the most recent publication within the European framework. 
@@ -35,16 +39,28 @@ The baseline for cross-border transmission capacities is based on reported histo
 <img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/transmission_lines_MENOFS.png" width=50% height=50%>
 
 ### Weather and demand data
-Weather data for the performance of variable renewable energy is generated through the xarray-based Python library Atlite [80], which converts climate data (in our case [ERA5 weather-reanalysis from ECMWF](https://doi.org/10.1002/qj.3803) ) to time series in a 30x30km grid cell. With investments in variable renewable energy at a country level, as in our case, the grid cells form an average for the full spatial extent of each country. To address the fact that the average capacity factor for solar PV, onshore and offshore wind will be reduced by poorly-performing grid cells (e.g. with low wind speeds) which in reality would not be considered for the deployment of these technologies, we apply a so-called cut-off factor. The cut-off factor excludes grid cells with an average capacity factor lower than a set threshold. For solar, onshore and offshore wind, this threshold is set to 0.09, 0.15 and 0.20 respectively, based on [ref]. 
+Weather data for the performance of variable renewable energy is generated through the xarray-based Python library [atlite](https://joss.theoj.org/papers/10.21105/joss.03294), which converts climate data (in our case [ERA5 weather-reanalysis from ECMWF](https://doi.org/10.1002/qj.3803) ) to time series in a 30x30km grid cell. With investments in variable renewable energy at a country level, as in our case, the grid cells form an average for the full spatial extent of each country. To address the fact that the average capacity factor for solar PV, onshore and offshore wind will be reduced by poorly-performing grid cells (e.g. with low wind speeds) which in reality would not be considered for the deployment of these technologies, we apply a so-called cut-off factor. The cut-off factor excludes grid cells with an average capacity factor lower than a set threshold. For solar, onshore and offshore wind, this threshold is set to 0.09, 0.15 and 0.20 respectively, based on [ref]. 
 
-Although previous studies have shown the issue of weather year variability (see e.g. [Grochowicz et al., 2023](https://doi.org/10.1016/j.eneco.2022.106496), [Pfenninger and Staffell](https://doi.org/10.1016/j.energy.2016.08.060) or [Staffell and Pfenninger](https://doi.org/10.1016/j.energy.2017.12.051) and that using a single year of weather data may largely skew the results, we only utilise historical data from 2010 as the main focus of this work on differences in analysis given different interpretations of justice. 
+Although previous studies have shown the issue of weather year variability (see e.g. [Grochowicz et al., 2023](https://doi.org/10.1016/j.eneco.2022.106496), [Pfenninger and Staffell, 2016](https://doi.org/10.1016/j.energy.2016.08.060) or [Staffell and Pfenninger, 2018](https://doi.org/10.1016/j.energy.2017.12.051)) and that using a single year of weather data may largely skew the results, we only utilise historical data from 2010 as the main focus of this work on differences in analysis given different interpretations of justice. 
 
-The model balances supply and demand at an hourly resolution for all nodes in the model. Demand time series are originally based on historical data from the [European Network of Transmission System Operators for Electricity (ENTSO-E) Transparency Platform](https://transparency.entsoe.eu/dashboard/show), but need to be adjusted to account for inconsistencies and missing data. This has previously been done by [van der Most](https://doi.org/10.1016/j.rser.2022.112987), who used climate data and applied a logistic smooth transmission regression (LSTR) model to the ENTSO-E dataset to correlate historical electricity demand to temperature and generate daily electricity demand for a set of European countries. Subsequently, [Frysztacki, van der Most and Neumann](https://doi.org/10.5281/zenodo.10820928) used hourly profiles from the [Open Power Systems Database](https://doi.org/10.25832/time_series/2020-10-06) to disaggregate the daily electricity demand to an hourly resolution, on a country level. We further take this data and scale it by a factor of two, based on a suggested possible increase in electricity demand by (source), while leaving the shape of the load curve untouched. 
+The model balances supply and demand at an hourly resolution for all nodes in the model. Demand time series are originally based on historical data from the [European Network of Transmission System Operators for Electricity (ENTSO-E) Transparency Platform](https://transparency.entsoe.eu/dashboard/show), but need to be adjusted to account for inconsistencies and missing data. This has previously been done by [van der Most et al., 2022](https://doi.org/10.1016/j.rser.2022.112987), who used climate data and applied a logistic smooth transmission regression (LSTR) model to the ENTSO-E dataset to correlate historical electricity demand to temperature and generate daily electricity demand for a set of European countries. Subsequently, [Frysztacki, van der Most and Neumann, 2024](https://doi.org/10.5281/zenodo.10820928) used hourly profiles from the [Open Power Systems Database, 2020](https://doi.org/10.25832/time_series/2020-10-06) to disaggregate the daily electricity demand to an hourly resolution, on a country level. We further take this data and scale it by a factor of two, based on a suggested possible increase in electricity demand by (source), while leaving the shape of the load curve untouched. 
 
 
 ### Techno-economic assumptions
+The full set of techno-economic assumptions can be found in __highres_gb_ext_database.ods__, in the Zenodo data package. 
+
+| Technology    | Capex [£k/MW] | FOM [£k/MW] | VOM [£k/MWh] |
+| -----------   | ------------- |------------ | ------------ |
+| Solar PV      | 17.312        | 5.0         | 0.0          | 
+| Onshore wind  | 55.326        | 20.0        | 0.00502568   | 
+| Offshore wind | 114.595       | 85.0        | 0.00168123   | 
+| Nuclear       | 546.354       | 63.074      | 0.00442909   | 
+| HydroRoR      | 267.628       | 41.661      | 0.002        | 
+| HydroRES      | 267.628       | 41.661      | 0.002        | 
+| Gas with CCS  | 107.312       | 32.772      | 0.004        | 
+| Gas w/o CCS   | 27.811        | 13.726      | 0.005        | 
 
 
 
 
-Any kind of questions can be directed to oskar.vagero@its.uio.no.
+
