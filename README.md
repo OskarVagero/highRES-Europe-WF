@@ -32,7 +32,7 @@ highRES is able to run at different spatial resolutions, based on the purpose of
 
 The baseline for cross-border transmission capacities is based on reported historical interconnection from ENTSO-E as well planned new interconnectors from figure 3.1 in the [Ten-Year Network Development Plan 2020](https://eepublicdownloads.blob.core.windows.net/public-cdn-container/tyndp-documents/TYNDP2020/FINAL/entso-e_TYNDP2020_Main_Report_2108.pdf). To allow some flexibility towards 2050, we allow for a three-fold increase in capacities.
 
-![Figure 1. Spatial extent of highRES and available interconnectors](analysis/figures/transmission_lines_MENOFS.png)
+<img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/transmission_lines_MENOFS.png" width=50% height=50%>
 
 ### Weather and demand data
 Weather data for the performance of variable renewable energy is generated through the xarray-based Python library Atlite [80], which converts climate data (in our case [ERA5 weather-reanalysis from ECMWF](https://doi.org/10.1002/qj.3803) ) to time series in a 30x30km grid cell. With investments in variable renewable energy at a country level, as in our case, the grid cells form an average for the full spatial extent of each country. To address the fact that the average capacity factor for solar PV, onshore and offshore wind will be reduced by poorly-performing grid cells (e.g. with low wind speeds) which in reality would not be considered for the deployment of these technologies, we apply a so-called cut-off factor. The cut-off factor excludes grid cells with an average capacity factor lower than a set threshold. For solar, onshore and offshore wind, this threshold is set to 0.09, 0.15 and 0.20 respectively, based on [ref]. 
