@@ -31,7 +31,7 @@ Although we have tried to generalise the workflow, it does require some manual c
 ## Snakemake workflow
 An overview of the Snakemake workflow, and the rules is included in the DAG below. 
 
-<img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/dag_resultsdb.png" width=80% height=80%>
+<img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/dag_resultsdb.pdf" width=80% height=80%>
 
 ## Model description
 highRES has been used in a number of other peer-reviewed papers. [Price and Zeyringer, 2022](https://doi.org/10.1016/j.softx.2022.101003) is the associated software publication, whereas [Price et al. (2023)](https://doi.org/10.1016/j.energy.2022.125450) is the most recent publication within the European framework. 
