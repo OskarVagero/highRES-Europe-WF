@@ -29,6 +29,8 @@ Although we have tried to generalise the workflow, it does require some manual c
 6. Run the snakemake workflow `snakemake --cores 16 --use-conda` (the number of cores should be based on the individual setup)
 
 ## Snakemake workflow
+An overview of the Snakemake workflow, and the rules is included in the DAG below. 
+
 <img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/dag_resultsdb.png" width=80% height=80%>
 
 ## Model description
