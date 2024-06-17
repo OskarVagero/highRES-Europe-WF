@@ -4,9 +4,7 @@
 
 This repository contains the model framework for the paper titled _Philosophical views of justice and their implications in energy systems modelling_ and information on how to re-create the results.
 
-The modelling framework is based on the European version of the **high** temporal and spatial **r**esolution **e**lectricity **s**ystem model [highRES](https://github.com/highRES-model/highRES-Europe-WF). Here we describe the main differences from previously published versions. 
-
-Documentation is available [here](https://highres-europe-wf.readthedocs.io/en/latest/).
+The modelling framework is based on the European version of the **high** temporal and spatial **r**esolution **e**lectricity **s**ystem model [highRES](https://github.com/highRES-model/highRES-Europe-WF). Here we describe the main differences from previously published versions. Documentation of highRES is available [here](https://highres-europe-wf.readthedocs.io/en/latest/).
 
 If there are any kind of questions, please direct them to oskar.vagero@its.uio.no.
 
@@ -29,22 +27,32 @@ Although we have tried to generalise the workflow, it does require some manual c
 6. Run the snakemake workflow `snakemake --cores 16 --use-conda` (the number of cores should be based on the individual setup)
 
 ## Snakemake workflow
-An overview of the Snakemake workflow, and the rules is included in the DAG below. 
+The snakemake workflow can be separated into three different phases. 
+
+### Phase 1: Generating the baseline model
+The first phase is to generate the baseline, cost-optimal model, on which the MGA scenarios are based. An overview of which rules are associated with the baseline is included in the DAG below.
 
 <img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/dag_resultsdb.png" width=80% height=80%>
 
+### Phase 2: Generating the country-specific min- and maximisations
+
+
+### Phase 3: Generating the system-wide min- and maximisations
+
+
+
 ## Model description
-highRES has been used in a number of other peer-reviewed papers. [Price and Zeyringer, 2022](https://doi.org/10.1016/j.softx.2022.101003) is the associated software publication, whereas [Price et al. (2023)](https://doi.org/10.1016/j.energy.2022.125450) is the most recent publication within the European framework. 
+highRES has been used in a number of other peer-reviewed papers. It is a linear cost-optimising electricity system model, designed to specifically analyse electricity systems with a high level of variable renewable energy sources. The model minimises electricity system costs (operating costs and annualised investment costs) to meet hourly demand subject to a number of technical constraints; thereby optimising the dispatch and locational investment into power plants, storage and transmission grid extension. [Price and Zeyringer, 2022](https://doi.org/10.1016/j.softx.2022.101003) is the associated software publication, whereas [Price et al. (2023)](https://doi.org/10.1016/j.energy.2022.125450) is the most recent publication using highRES in a European framework. 
 
 ### Spatial extent and resolution
 highRES is able to run at different spatial resolutions, based on the purpose of the analysis. For example, [Price et al. (2023)](https://doi.org/10.1016/j.energy.2022.125450) have analysed the UK electricity system, and as such represent the UK at a higher spatial resolution, while countries located further away from the UK are clustered together. [Roithner and Hvidsten](https://www.nordicenergy.org/project/the-role-of-hard-to-reach-energy-users-in-reaching-balticsnordics-climate-targets-a-multidisciplinary-analysis/) have focused on Norway. For our purposes, we focus on the wider European electricity system, and model each country as one node.
 
-The baseline for cross-border transmission capacities is based on reported historical interconnection from ENTSO-E as well planned new interconnectors from figure 3.1 in the [Ten-Year Network Development Plan 2020](https://eepublicdownloads.blob.core.windows.net/public-cdn-container/tyndp-documents/TYNDP2020/FINAL/entso-e_TYNDP2020_Main_Report_2108.pdf). To allow some flexibility towards 2050, we allow for a three-fold increase in capacities.
+The baseline for cross-border transmission capacities is based on reported historical interconnection from ENTSO-E as well planned new interconnectors from figure 3.1 in the [Ten-Year Network Development Plan 2020](https://eepublicdownloads.blob.core.windows.net/public-cdn-container/tyndp-documents/TYNDP2020/FINAL/entso-e_TYNDP2020_Main_Report_2108.pdf). To allow some flexibility towards 2050, we allow for a three-fold increase in capacities. An overview of the spatial zones and the available transmission links is shown below. 
 
 <img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/transmission_lines_MENOFS.png" width=50% height=50%>
 
 ### Weather and demand data
-Weather data for the performance of variable renewable energy is generated through the xarray-based Python library [atlite](https://joss.theoj.org/papers/10.21105/joss.03294), which converts climate data (in our case [ERA5 weather-reanalysis from ECMWF](https://doi.org/10.1002/qj.3803) ) to time series in a 30x30km grid cell. With investments in variable renewable energy at a country level, as in our case, the grid cells form an average for the full spatial extent of each country. To address the fact that the average capacity factor for solar PV, onshore and offshore wind will be reduced by poorly-performing grid cells (e.g. with low wind speeds) which in reality would not be considered for the deployment of these technologies, we apply a so-called cut-off factor. The cut-off factor excludes grid cells with an average capacity factor lower than a set threshold. For solar, onshore and offshore wind, this threshold is set to 0.09, 0.15 and 0.20 respectively, based on [ref]. 
+Weather data for the performance of variable renewable energy is generated through the xarray-based Python library [atlite](https://joss.theoj.org/papers/10.21105/joss.03294), which converts climate data (in our case [ERA5 weather-reanalysis from ECMWF](https://doi.org/10.1002/qj.3803) ) to time series in a 30x30km grid cell. With investments in variable renewable energy at a country level, as in our case, the grid cells form an average for the full spatial extent of each country. To address the fact that the average capacity factor for solar PV, onshore and offshore wind will be reduced by poorly-performing grid cells (e.g. with low wind speeds) which in reality would not be considered for the deployment of these technologies, we apply a so-called cut-off factor. The cut-off factor excludes grid cells with an average capacity factor lower than a set threshold. For solar, onshore and offshore wind, this threshold is set to 0.09, 0.15 and 0.20 respectively.
 
 Hydropower plants are modelled in a simplified and aggregated manner, where each zone of the model only have one hydropower plant with the aggregated power and storage capacity. To ensure that the hydropower data is consistent with historical levels, we normalise it based on data from the [U.S. Energy Information Administration](https://www.eia.gov/international/data/world/electricity/electricity-generation?pd=2&p=000000000000000000000000000000g&u=1&f=A&v=mapbubble&a=-&i=none&vo=value&t=R&g=000000000000002&l=73-1028i008017kg6368g80a4k000e0ag00gg0004g8g0ho00g000400008&l=72-00000000000000000000000000080000000000000000000g&s=315532800000&e=1609459200000&ev=false&). Furthermore, we base existing hydropower capacities on the [JRC Hydro-power database](https://zenodo.org/records/5215920). 
 
