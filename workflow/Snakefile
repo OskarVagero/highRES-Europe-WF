@@ -10,13 +10,13 @@ import pathlib
 date_range=["01-01","12-31"]
 
 # Technologies which will be maximised / minimised for
-#technologies = ['Solar', 'Windoffshore', 'Windonshore', 'NuclearEPR']
-technologies = ['Solar']
-#optimisations = ['maximizing', 'minimizing']
-optimisations = ['maximizing']
+technologies = ['Solar', 'Windoffshore', 'Windonshore', 'NuclearEPR']
+#technologies = ['Solar']
+optimisations = ['maximizing', 'minimizing']
+#optimisations = ['maximizing']
 
-#slacklevels = ['0.05', '0.10', '0.15']
-slacklevels = ['0.05']
+slacklevels = ['0.05', '0.10', '0.15']
+#slacklevels = ['0.05']
 
 cplex_options = """
 lpmethod 4
@@ -185,23 +185,33 @@ localrules:
     slack_change,
     set_cost_optimal,
     cplex_opt,
+    change_objective_EU,
+    rule cplex_opt_EU,
 
 
 rule all:
     input:
-        #expand(modelpath / "results.db", zip, year=years, spatial=spatials),
         expand(
-            clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/results.gdx",
-            country=aggregated_regions, 
+            clusterpath + "{year}_{spatial}_EU_{technology}_{optimisation}_{slacklevel}/results_EU.gdx",
             technology=technologies, 
             optimisation=optimisations, 
             slacklevel=slacklevels,
             year=years,
             spatial=spatials,
             ),
+
+        expand(
+            clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/results.gdx",
+            technology=technologies, 
+            optimisation=optimisations, 
+            country=aggregated_regions,
+            slacklevel=slacklevels,
+            year=years,
+            spatial=spatials,
+            ),
         
 
-
+# Phase 1
 rule ensure_gams_template:
     input:
         "resources/highresraw.gms",
@@ -284,7 +294,7 @@ rule rename_demand_file:
 rule build_shapes:
 	input:
 		euroshape=shared_input_path
-		/ "geodata/onshore/shapes/NUTS_RG_60M_2021_4326.geojson",
+		/ "geodata/onshore/shapes/NUTS_RG_01M_2021_4326.geojson",
 		eurooffshoreshape=shared_input_path
 		/ ("geodata/offshore/BOTTOM_MOUNTED_EUROPE_NUTS0" "_NORWAY_NUTS3.geojson"),
 	conda:
@@ -601,7 +611,7 @@ rule run_model:
         str(modelpath) + "/highres.lst",
         str(modelpath) + "/highres.log",
     output:
-        modelresults=protected(modelpath / "results.gdx"),
+        modelresults=modelpath / "results.gdx",
         #modelresultsdd=protected(modelpath / "results.db"),
     script:
         # TODO platform independence
@@ -617,7 +627,7 @@ rule convert_results:
         # TODO platform independence
         gamspath + "gdx2sqlite -i {input} -o {output} -fast"
 
-
+# Phase 2
 rule set_cost_optimal:
     input:
         rules.convert_results.output.resultsdb,
@@ -687,3 +697,43 @@ rule run_mga:
 		clusterpath + "{year}_{spatial}_{country}_{technology}_{optimisation}_{slacklevel}/results.gdx"
 	script:
 		"scripts/run_gams_mga.sh"
+
+# Phase 3
+# One rule to change the .gms file
+rule change_objective_EU:
+	input:
+		"resources/highres_mga.gms",
+		#rules.slack_change.output.mgaparams,
+	output:
+		clusterpath + "{year}_{spatial}_EU_{technology}_{optimisation}_{slacklevel}/highres_mga_EU.gms"
+	script:
+		"scripts/change_MGA_objective_EU.py"
+
+rule cplex_opt_EU:
+	output:
+		cplex_mga = clusterpath + "{year}_{spatial}_EU_{technology}_{optimisation}_{slacklevel}/cplex.opt"
+	run:
+		with open(output[0], "w+") as f:
+			f.writelines(cplex_options)
+
+# One rule to run the MGA stuff
+rule run_mga_EU:
+	input:
+		rules.cplex_opt_EU.output.cplex_mga,
+		shared_code_path + "highres_data_input.gms",
+		shared_code_path + "highres_hydro.gms",
+		shared_code_path + "highres_results.gms",
+		shared_code_path + "highres_storage_setup.gms",
+		shared_code_path + "highres_storage_uc_setup.gms",
+		shared_code_path + "highres_uc_setup.gms",
+		clusterpath + "{year}_{spatial}_EU_{technology}_{optimisation}_{slacklevel}/mga_parameters.dd",
+		clusterpath + "{year}_{spatial}_EU_{technology}_{optimisation}_{slacklevel}/highres_mga_EU.gms",
+		modelpath / "vre_{year}_.gdx",
+		"/fp/projects01/ec85/.bin/gams/gams41.5_linux_x64_64_sfx",
+	params:
+		gamspath=gamspath,
+		modelpath=str(modelpath),
+	output:
+		clusterpath + "{year}_{spatial}_EU_{technology}_{optimisation}_{slacklevel}/results_EU.gdx",
+	script:
+		"scripts/run_gams_mga_EU.sh"
