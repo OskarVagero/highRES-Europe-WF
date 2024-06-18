@@ -27,19 +27,9 @@ Although we have tried to generalise the workflow, it does require some manual c
 6. Run the snakemake workflow `snakemake --cores 16 --use-conda` (the number of cores should be based on the individual setup)
 
 ## Snakemake workflow
-The snakemake workflow can be separated into three different phases. 
+The full snakemake workflow is visualised in the dag below. To reduce the complexity, we have reduced the number of wildcards significantly. Consequently, these are the rules that will be run and their dependencies, but there will in reality be more instances of many of the rules (particularly for the MGA). 
 
-### Phase 1: Generating the baseline model
-The first phase is to generate the baseline, cost-optimal model, on which the MGA scenarios are based. An overview of which rules are associated with the baseline is included in the DAG below.
-
-<img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/dag_resultsdb.png" width=80% height=80%>
-
-### Phase 2: Generating the country-specific min- and maximisations
-
-
-### Phase 3: Generating the system-wide min- and maximisations
-
-
+<img src="https://github.com/OskarVagero/highRES-Europe-WF/blob/MENOFS/analysis/figures/dag_full.png" width=80% height=80%>
 
 ## Model description
 highRES has been used in a number of other peer-reviewed papers. It is a linear cost-optimising electricity system model, designed to specifically analyse electricity systems with a high level of variable renewable energy sources. The model minimises electricity system costs (operating costs and annualised investment costs) to meet hourly demand subject to a number of technical constraints; thereby optimising the dispatch and locational investment into power plants, storage and transmission grid extension. [Price and Zeyringer, 2022](https://doi.org/10.1016/j.softx.2022.101003) is the associated software publication, whereas [Price et al. (2023)](https://doi.org/10.1016/j.energy.2022.125450) is the most recent publication using highRES in a European framework. 
