@@ -4,6 +4,8 @@
 
 This repository contains the model framework for the paper titled _Philosophical views of justice and their implications in energy systems modelling_ and information on how to re-create the results.
 
+The work is currently under peer-review, and available as a preprint at arXiv: https://arxiv.org/abs/2406.16186 
+
 The modelling framework is based on the European version of the **high** temporal and spatial **r**esolution **e**lectricity **s**ystem model [highRES](https://github.com/highRES-model/highRES-Europe-WF). Here we describe the main differences from previously published versions. Documentation of highRES is available [here](https://highres-europe-wf.readthedocs.io/en/latest/).
 
 If there are any kind of questions, please direct them to oskar.vagero@its.uio.no.
