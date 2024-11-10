@@ -2,7 +2,7 @@
 
 [![Documentation Status](https://readthedocs.org/projects/highres-europe-wf/badge/?version=latest)](https://highres-europe-wf.readthedocs.io/en/latest/?badge=latest)
 
-This repository contains the model framework for the paper titled _Philosophical views of justice and their implications in energy systems modelling_ and information on how to re-create the results.
+This repository contains the model framework for the paper titled _The effects of fair allocation principles on energy system model designs_ and information on how to re-create the results.
 
 The work has been published in Environmental Research: Energy and available [here](https://doi.org/10.1088/2753-3751/ad8e6a).  
 
