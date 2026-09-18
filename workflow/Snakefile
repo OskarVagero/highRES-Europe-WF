@@ -29,9 +29,15 @@ elif "focus" in spatials:
         aggregated_countries = config["parameters"]["aggregated_countries"]
     else:
         aggregated_countries=None
+
 elif "focus" not in spatials:
     focus_countries=None
     aggregated_countries=None
+    
+if "co2_target_aggregation" in config["parameters"]:
+    co2_target_aggregation = config["parameters"]["co2_target_aggregation"]
+else:
+    co2_target_aggregation=None
     
 
 psys_scenarios = config["parameters"]["power_system_scenario"]
@@ -385,7 +391,8 @@ rule build_technoeconomic_inputs:
         co2_target_extent=config["parameters"]["co2_target_extent"],
         co2_target_scenario="BASE",
         focus_countries=focus_countries,
-        aggregated_countries=aggregated_countries
+        aggregated_countries=aggregated_countries,
+        co2_target_aggregation=co2_target_aggregation
     script:
         "scripts/data2dd.py"
 
