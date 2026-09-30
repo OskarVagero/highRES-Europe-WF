@@ -26,8 +26,8 @@ co2target2dd(
 psys_scen = snakemake.wildcards.psys_scenario
 esys_scen = "BASE"
 
-scen_db = snakemake.input[1]
-f_techno = snakemake.input[2]
+scen_db = snakemake.input.scenarios
+f_techno = snakemake.input.database
 
 params_to_write = {}
 
@@ -119,7 +119,7 @@ scen2dd(
     exist_agg=snakemake.wildcards.spatial,
     agg_countries=agg_countries
 )
-
+"""
 trans_links(
     root,
     f_techno,
@@ -127,7 +127,7 @@ trans_links(
     out=out,
     agg_countries=agg_countries
 )
-
+"""
 add_vre_connection_costs(
     root,
     out,
