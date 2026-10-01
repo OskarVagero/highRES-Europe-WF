@@ -359,6 +359,23 @@ rule build_vre_cf_inputs:
     notebook:
         "notebooks/highRES-build_vre_cf_inputs.ipynb"
 
+rule build_existLimits:
+    input:
+        gem_file=config["paths"]["gem_file"],
+        jrchydro="resources/jrc-hydro-power-plant-database.csv",
+        euroshape=rules.build_shapes.output.onshoreshape,
+        #init_technoeconomic_database="resources/highres_technoeconomic_database.ods",
+    output:
+        gen_lim_z="intermediate_data/{spatial}/limits/gen_lim_z.csv",
+        gen_exist_z="intermediate_data/{spatial}/limits/gen_exist_z.csv",
+        gen_exist_r="intermediate_data/{spatial}/limits/gen_exist_r.csv",
+        store_exist_z="intermediate_data/{spatial}/limits/store_exist_z.csv",
+        store_lim_z="intermediate_data/{spatial}/limits/store_lim_z.csv",
+        #technoeconomic_database="intermediate_data/{spatial}/highres_technoeconomic_database_upd.ods",
+    params:
+        manual_storage_overrides_mwh=config["parameters"]["storage_overrides_mwh"]
+    notebook:
+        "notebooks/highRES_build_existing.ipynb"
 
 rule build_technoeconomic_inputs:
     input:
@@ -369,6 +386,11 @@ rule build_technoeconomic_inputs:
         co2_targets_db="resources/europe_co2_targets.csv",
         vre_connection_dists=rules.build_vre_cf_inputs.output.vre_connection_dists,
         data2dd="workflow/scripts/data2dd_funcs.py",
+        gen_lim_z=rules.build_existLimits.output.gen_lim_z,
+        gen_exist_z=rules.build_existLimits.output.gen_exist_z,
+        store_exist_z=rules.build_existLimits.output.store_exist_z,
+        store_lim_z=rules.build_existLimits.output.store_lim_z,
+        gen_exist_r=rules.build_existLimits.output.gen_exist_r,
         focus_dem_shares=(
             "resources/uk_zonal_shares.csv"
             if focus_countries
