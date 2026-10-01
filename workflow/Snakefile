@@ -379,7 +379,7 @@ rule build_existLimits:
 
 rule build_technoeconomic_inputs:
     input:
-        "resources/zones.csv",
+        #"resources/zones.csv",
         scenarios="resources/highres_scenarios.xls",
         database="resources/highres_technoeconomic_database_upd.ods",
         europedemandcsvlocation="resources/europe_demand.csv",
@@ -392,7 +392,7 @@ rule build_technoeconomic_inputs:
         store_lim_z=rules.build_existLimits.output.store_lim_z,
         gen_exist_r=rules.build_existLimits.output.gen_exist_r,
         focus_dem_shares=(
-            "resources/uk_zonal_shares.csv"
+            "resources/zonal_shares.csv"
             if focus_countries
             else []
         ),            
@@ -402,7 +402,7 @@ rule build_technoeconomic_inputs:
         modelpath / "{year}_temporal.dd",
         modelpath / "{psys_scenario}_gen.dd",
         modelpath / "{psys_scenario}_store.dd",
-        modelpath / "trans.dd",
+        #modelpath / "trans.dd",
         co2_target=modelpath / "BASE_co2_target.dd",
         demandfile=modelpath / "BASE_demand_{year}.dd",
     params:
