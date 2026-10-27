@@ -1,24 +1,16 @@
-
-
-
-
+# Load modules
 import itertools
-
 import pandas as pd
 import pathlib
 
 date_range = config["parameters"]["date_range"]
-
 user_mode = config["parameters"]["mode"][0]
-
 include_rooftop=config["parameters"]["include_rooftop"]
-
 inputyears = config["parameters"]["years"]
 
 # TODO: make grid_regions work
 grid_regions = []
 aggregated_regions = config["parameters"]["aggregated_regions"]
-
 spatials = config["parameters"]["spatials"]
 
 if "focus" in spatials and "focus_countries" not in config["parameters"]:
@@ -113,12 +105,14 @@ scenarios.loc[:,["year","run_name"]].to_csv(resultspath / "scens.csv",index=Fals
 # Relative path to workdir
 
 modelpath=resultspath / "{psys_scenario}_{year}_{spatial}"
+# snakemake -c 60 --configfile config/config_oskar.yaml --executor slurm --default-resources slurm_account=ec85 -j 48 --rerun-incomplete 
 
 
 localrules:
     all,
     build_cplex_opt,
     build_technoeconomic_inputs,
+    build_rooftop_areas,
     build_zones_file,
     build_vre_areas_file,
     build_vre_file,
@@ -126,12 +120,17 @@ localrules:
     build_hydro_capfac,
     build_hydrores_inflow,
     convert_results,
+    build_vre_cf_inputs,
     build_vre_parquet,
     build_vre_csv,
     compress_vre_gdx,
     compress_hydrores_inflow,
     convert_results_db_parquet,
+    build_inputs,
     build_exist_cap,
+    build_highres_input,
+    build_transmission,
+    build_NO_demand,
     run_gams,
 
 
@@ -378,9 +377,34 @@ rule build_NO_demand:
     notebook:
         "notebooks/highRES_build_NO_demand.ipynb"
 
+rule preProcess_exist_cap:
+    input:
+        excel_solar = config["paths"]["GEM_solar"],
+        excel_wind = config["paths"]["GEM_wind"],
+        excel_nuclear = config["paths"]["GEM_nuclear"],
+        onshore_shapefile = rules.build_shapes.output.onshoreshape,
+    output:
+        existing_cap = "intermediate_data/{spatial}/limits/installed_capacities.csv",
+    notebook:
+        "notebooks/highRES_preProcess_exist_cap.ipynb"
+
+rule process_exist_cap:
+    input:
+        existing_cap = rules.preProcess_exist_cap.output.existing_cap,
+        onshore_shapefile = rules.build_shapes.output.onshoreshape,
+        offshore_shapefile = rules.build_shapes.output.offshoreshape,
+        ods_file = "resources/highres_technoeconomic_database.ods",
+    params:
+        ods_output_file = "resources/highres_technoeconomic_database2.ods",
+        model_year=2050,
+    output:
+        geodata_file = "resources/exist_pcap_geom_2050.geojson",
+    notebook:
+        "notebooks/highRES_process_exist_cap.ipynb"
+
 rule build_existLimits:
     input:
-        gem_file=config["paths"]["gem_file"],
+        gem_file=rules.process_exist_cap.output.geodata_file,
         jrchydro="resources/jrc-hydro-power-plant-database.csv",
         euroshape=rules.build_shapes.output.onshoreshape,
         #init_technoeconomic_database="resources/highres_technoeconomic_database.ods",
@@ -406,11 +430,11 @@ rule build_technoeconomic_inputs:
         co2_targets_db="resources/europe_co2_targets.csv",
         vre_connection_dists=rules.build_vre_cf_inputs.output.vre_connection_dists,
         data2dd="workflow/scripts/data2dd_funcs.py",
-        gen_lim_z=rules.build_existLimits.output.gen_lim_z,
-        gen_exist_z=rules.build_existLimits.output.gen_exist_z,
-        store_exist_z=rules.build_existLimits.output.store_exist_z,
-        store_lim_z=rules.build_existLimits.output.store_lim_z,
-        gen_exist_r=rules.build_existLimits.output.gen_exist_r,
+        #gen_lim_z=rules.build_existLimits.output.gen_lim_z,
+        #gen_exist_z=rules.build_existLimits.output.gen_exist_z,
+        #store_exist_z=rules.build_existLimits.output.store_exist_z,
+        #store_lim_z=rules.build_existLimits.output.store_lim_z,
+        #gen_exist_r=rules.build_existLimits.output.gen_exist_r,
         focus_dem_shares=(
             "resources/zonal_shares.csv"
             if focus_countries
@@ -434,6 +458,7 @@ rule build_technoeconomic_inputs:
         co2_target_scenario="BASE",
         focus_countries=focus_countries,
         aggregated_countries=aggregated_countries,
+        co2_target_aggregation=co2_target_aggregation,
         custom_focus_demand_countries=config.get(
             "custom_focus_demand_countries",
             []
@@ -603,24 +628,6 @@ rule compress_vre_gdx:
     shell:
         gamspath + "gdxcopy -V7C -Replace {input}"
 
-
-""" def inputfilelist(wildcards):
-    returndict = {}
-    returndict['regionsfile'] = modelpath / "_regions.dd"
-    returndict['zonesfile'] = modelpath / "zones.dd"
-    returndict['temporalfile'] = modelpath / "{year}_temporal.dd"
-    returndict['vreareafile'] = modelpath / "vre_areas_{year}_.dd"
-    returndict['demandfile'] = modelpath / "BASE_demand_{year}.dd"
-    returndict['capfacfilecompressed'] = modelpath / "vre_gdx.compressed"
-    returndict['capfacfile'] = modelpath / "vre_{year}_.gdx"
-    returndict['hydroresinflowfile'] = modelpath / "hydro_res_inflow_{year}.gdx"
-    returndict['co2budgetfile'] = modelpath / "BASE_co2_budget.dd"
-    returndict['genparamsfile'] = modelpath / "BASE_gen.dd"
-    returndict['storeparamsfile'] = modelpath / "BASE_store.dd"
-    returndict['transparamsfile'] = modelpath / "trans.dd"
-    return returndict """
-
-
 rule build_ev_inputs:
     input:
         "resources/ev_data/EV_grid_connected_power_kW.csv",
@@ -684,7 +691,7 @@ rule build_inputs:
         rules.compress_hydrores_inflow.output.compressdone,
         modelpath / "{psys_scenario}_gen.dd",
         modelpath / "{psys_scenario}_store.dd",
-        modelpath / "trans.dd",
+        #modelpath / "trans.dd",
         modelpath / "cplex.opt",
         modelpath / "ev_data.dd",
     output:
@@ -732,13 +739,17 @@ rule run_gams:
         EV_soc_min=config["parameters"]["EV_soc_min"],
         EV_soc_max=config["parameters"]["EV_soc_max"],
     resources:
-        mem_mb=50000,
+        mem_mb=250000,
+        runtime=4320, # 3 days in minutes
+    threads: 46
     log:
-        str(modelpath) + "/highres.lst",
-        str(modelpath) + "/highres.log",
+        lst=str(modelpath) + "/highres.lst",
+        gams=str(modelpath) + "/highres.log",
     output:
         modelresults=protected(modelpath / "results.gdx"),
-        # modelresultsdd=protected(modelpath / "results.db"),
+        # modelresultsdd=protected(modelpath / "results.db")
+    #benchmark:
+    #    modelpath / "benchmarks/run_gams.tsv"
     script:
         "scripts/run_gams.py"
 

@@ -39,15 +39,18 @@ process = subprocess.Popen(
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
     cwd=snakemake.params.modelpath,
+    text=True,
+    bufsize=1
 )
 
-# Below writes gams output to terminal in realtime and log
+with open(snakemake.log.gams, "w", buffering=1) as log_file:
+    for line in process.stdout:
+        print(line, end="", flush=True)
+        log_file.write(line)
+        log_file.flush()
 
-with open(snakemake.log[0], "w") as f:
-    while True:
-        line = process.stdout.readline()
+return_code = process.wait()
 
-        if not line and process.poll() is not None:
-            break
-        print(line.decode(), end="")
-        f.write(line.decode().rstrip("\n"))
+if return_code != 0:
+    raise subprocess.CalledProcessError(return_code, args)
+
