@@ -654,8 +654,14 @@ def euro_demand2dd(
     yr,
     focus_dem_shares=None,
     focus_countries="",
-    agg_countries=None
-):
+    agg_countries=None,
+    norway_demand_csv=None,
+    custom_focus_demand_countries=None,
+):  
+
+    if custom_focus_demand_countries is None:
+        custom_focus_demand_countries = []
+
     d = pd.read_csv(europedemandcsvlocation)
 
     try:
@@ -668,6 +674,28 @@ def euro_demand2dd(
     d = d.loc[:, d.columns.isin(aggregated_regions)]
 
     d = d[dstart:dstop]
+
+    if norway_demand_csv is not None:
+        no_demand = pd.read_csv(
+            norway_demand_csv,
+            parse_dates=["datetime"],
+        ).set_index("datetime")
+
+        no_demand = no_demand.loc[dstart:dstop]
+
+        # Keep only zones used by the current spatial configuration.
+        no_demand = no_demand.loc[
+            :,
+            no_demand.columns.isin(aggregated_regions),
+        ]
+
+        # Norwegian zonal data should replace any less-detailed Norwegian
+        # demand columns from the European source.
+        overlapping_zones = d.columns.intersection(no_demand.columns)
+        d = d.drop(columns=overlapping_zones)
+
+        d = pd.concat([d, no_demand], axis=1)
+
 
     # TODO a better warning than below
 
@@ -684,14 +712,18 @@ def euro_demand2dd(
 
         print("Zero demands for: ", d.columns[pd.isnull(d).any(axis=0)])
         
-    if focus_countries is not None:
+    if focus_countries is not None and focus_dem_shares is not None:
         
         focus_dem_shares=(pd.read_csv(focus_dem_shares)
                           .set_index(["zone"])
-                          .T
-                          .div(100))
+                          .T)
+                          #.div(100))
           
         for (cntr,z) in focus_countries.items():
+
+            # Demand for this focus country comes from a custom input file.
+            if cntr in custom_focus_demand_countries:
+                continue
             
             # TODO splitting demand for multiple countries has not been
             # tested
@@ -703,7 +735,67 @@ def euro_demand2dd(
                              index=d.index)
             
             d=pd.concat((d.loc[:,d.columns[d.columns!=cntr]],d_z),axis=1)
-            
+
+    if norway_demand_csv is not None:
+        no_demand = pd.read_csv(norway_demand_csv)
+        if "datetime" not in no_demand.columns:
+            raise ValueError(
+                f"{norway_demand_csv} must contain a 'datetime' column."
+            )
+
+        no_demand["datetime"] = pd.to_datetime(no_demand["datetime"])
+        no_demand = no_demand.set_index("datetime")
+
+        # Use the exact same timestamps and order as European demand.
+        no_demand = no_demand.reindex(d.index)
+
+        if no_demand.isna().any().any():
+            incomplete_zones = no_demand.columns[
+                no_demand.isna().any(axis=0)
+            ].tolist()
+
+            raise ValueError(
+                "Norwegian demand does not cover all required timestamps. "
+                f"Columns with missing values: {incomplete_zones}"
+            )
+
+        # Check that all expected Norwegian focus zones are present.
+        if focus_countries is not None and "NO" in focus_countries:
+            expected_no_zones = set(focus_countries["NO"])
+            available_no_zones = set(no_demand.columns)
+
+            missing_no_zones = expected_no_zones - available_no_zones
+            if missing_no_zones:
+                raise ValueError(
+                    "Norwegian demand CSV is missing expected zones: "
+                    f"{sorted(missing_no_zones)}"
+                )
+
+            # Keep only expected Norwegian zones. This prevents auxiliary
+            # columns in the CSV from being included in the model input.
+            no_demand = no_demand.loc[
+                :,
+                focus_countries["NO"],
+            ]
+
+        # Remove aggregate Norwegian demand, if it exists.
+        d = d.drop(columns="NO", errors="ignore")
+
+        # Replace any Norwegian zone demand already present in the European
+        # demand source with the dedicated Norwegian demand calculation.
+        existing_no_zones = d.columns.intersection(no_demand.columns)
+
+        if not existing_no_zones.empty:
+            print(
+                "Replacing demand from the European input for Norwegian zones: "
+                f"{existing_no_zones.tolist()}"
+            )
+
+            d = d.drop(columns=existing_no_zones)
+
+        d = pd.concat([d, no_demand], axis=1)
+
+
     if agg_countries is not None:
         
         for agg,z in agg_countries.items():

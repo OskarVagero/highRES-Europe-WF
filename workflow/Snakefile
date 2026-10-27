@@ -360,6 +360,24 @@ rule build_vre_cf_inputs:
     notebook:
         "notebooks/highRES-build_vre_cf_inputs.ipynb"
 
+
+# TODO: Base demand is from 2025 but should match with weatheryear used. 
+# TODO: Sectoral demand increases are hardcoded. 
+rule build_NO_demand:
+    input:
+        municipalities_path = config["paths"]["no_municipalities"],
+        petro_shares = config["paths"]["petro_shares"],
+        industry_emissions = config["paths"]["industry_emissions"],
+        datacentres = config["paths"]["datacentres"],
+        hydrogen = config["paths"]["hydrogen"],
+        car_fleet = config["paths"]["car_fleet"],
+        car_volume = config["paths"]["car_volume"],
+        shapefile=rules.build_shapes.output.onshoreshape,
+    output:
+        norway_hourly_demand_MW = modelpath / "norway_demand_MW.csv",
+    notebook:
+        "notebooks/highRES_build_NO_demand.ipynb"
+
 rule build_existLimits:
     input:
         gem_file=config["paths"]["gem_file"],
@@ -383,7 +401,8 @@ rule build_technoeconomic_inputs:
         #"resources/zones.csv",
         scenarios="resources/highres_scenarios.xls",
         database="resources/highres_technoeconomic_database_upd.ods",
-        europedemandcsvlocation="resources/europe_demand.csv",
+        europedemandcsvlocation="resources/WIMBY_demand_2010_mockData.csv",
+        norway_demand_MW=rules.build_NO_demand.output.norway_hourly_demand_MW,
         co2_targets_db="resources/europe_co2_targets.csv",
         vre_connection_dists=rules.build_vre_cf_inputs.output.vre_connection_dists,
         data2dd="workflow/scripts/data2dd_funcs.py",
@@ -415,7 +434,10 @@ rule build_technoeconomic_inputs:
         co2_target_scenario="BASE",
         focus_countries=focus_countries,
         aggregated_countries=aggregated_countries,
-        co2_target_aggregation=co2_target_aggregation
+        custom_focus_demand_countries=config.get(
+            "custom_focus_demand_countries",
+            []
+        ),
     script:
         "scripts/data2dd.py"
 

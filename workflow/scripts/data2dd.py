@@ -96,7 +96,6 @@ if snakemake.wildcards.spatial == "focus":
             zones=np.append(zones[np.isin(zones,z,invert=True)],key)
             
     agg_countries=snakemake.params.aggregated_countries
-    
     zones=zones.tolist()
     
 else:
@@ -173,5 +172,7 @@ for yr in years:
         yr,
         focus_dem_shares=focus_dem_shares,
         focus_countries=snakemake.params.focus_countries,
-        agg_countries=agg_countries
+        agg_countries=agg_countries,
+        norway_demand_csv=snakemake.input.norway_demand_MW,
+        custom_focus_demand_countries=snakemake.params.custom_focus_demand_countries,
     )
