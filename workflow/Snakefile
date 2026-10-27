@@ -647,6 +647,25 @@ rule build_ev_inputs:
     notebook:
         "notebooks/highRES_build_ev_inputs.ipynb"
 
+rule build_transmission:
+    input:
+        euroshape=rules.build_shapes.output.onshoreshape,
+        existing_lines=config["paths"]["existing_lines"],
+        existing_links=config["paths"]["existing_links"],
+        new_lines=config["paths"]["new_lines"],
+        new_links=config["paths"]["new_links"],
+        upg_links=config["paths"]["upg_links"],
+        upg_lines=config["paths"]["upg_lines"],
+        tyndp2024=config["paths"]["tyndp2024"],
+        tyndp2020=config["paths"]["tyndp2020"],
+        existing_transmission=config["paths"]["existing_transmission"],
+        transmission_params=config["paths"]["transmission_params"]
+    params:
+        transmission_alpha=config["parameters"]["transmission_alpha"]
+    output:
+        transdd=modelpath / "trans.dd",
+    notebook:
+        'notebooks/highRES_build_flexible_transmission.ipynb'
 
 # This rule exists so users can stop the workflow after the input creation, to
 # not have it automatically run the model as well, in case this is not desired.
@@ -658,6 +677,7 @@ rule build_inputs:
         modelpath / "{year}_temporal.dd",
         modelpath / "vre_areas_{year}_.dd",
         rules.build_technoeconomic_inputs.output.demandfile,
+        rules.build_transmission.output.transdd,
         modelpath / "vre_gdx.compressed",
         modelpath / "vre_{year}_.gdx",
         modelpath / "hydro_res_inflow_{year}.gdx",
