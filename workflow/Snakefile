@@ -393,12 +393,10 @@ rule process_exist_cap:
         existing_cap = rules.preProcess_exist_cap.output.existing_cap,
         onshore_shapefile = rules.build_shapes.output.onshoreshape,
         offshore_shapefile = rules.build_shapes.output.offshoreshape,
-        ods_file = "resources/highres_technoeconomic_database.ods",
     params:
-        ods_output_file = "resources/highres_technoeconomic_database2.ods",
         model_year=2050,
     output:
-        geodata_file = "resources/exist_pcap_geom_2050.geojson",
+        geodata_file="intermediate_data/{spatial}/limits/exist_pcap_geom_2050.geojson",
     notebook:
         "notebooks/highRES_process_exist_cap.ipynb"
 
@@ -430,11 +428,11 @@ rule build_technoeconomic_inputs:
         co2_targets_db="resources/europe_co2_targets.csv",
         vre_connection_dists=rules.build_vre_cf_inputs.output.vre_connection_dists,
         data2dd="workflow/scripts/data2dd_funcs.py",
-        #gen_lim_z=rules.build_existLimits.output.gen_lim_z,
-        #gen_exist_z=rules.build_existLimits.output.gen_exist_z,
-        #store_exist_z=rules.build_existLimits.output.store_exist_z,
-        #store_lim_z=rules.build_existLimits.output.store_lim_z,
-        #gen_exist_r=rules.build_existLimits.output.gen_exist_r,
+        gen_lim_z=rules.build_existLimits.output.gen_lim_z,
+        gen_exist_z=rules.build_existLimits.output.gen_exist_z,
+        store_exist_z=rules.build_existLimits.output.store_exist_z,
+        store_lim_z=rules.build_existLimits.output.store_lim_z,
+        gen_exist_r=rules.build_existLimits.output.gen_exist_r,
         focus_dem_shares=(
             "resources/zonal_shares.csv"
             if focus_countries

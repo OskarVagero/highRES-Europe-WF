@@ -449,9 +449,26 @@ def scen2dd(
     esys_cap=False,
     exist_cap=False,
     exist_agg="region",
-    agg_countries=None
+    agg_countries=None,
+    limit_files=None,
 ):
     # co2lim2dd(co2budgetddlocation, root, run, esys, scen_db, out=out)
+    def read_limit_table(tech_type, table_name):
+        """
+        Read a generated CSV limit table when supplied; otherwise retain the
+        previous ODS-sheet behaviour.
+        """
+        key = f"{tech_type}_{table_name}"
+
+        if limit_files is not None and key in limit_files:
+            return pd.read_csv(limit_files[key])
+
+        return pd.read_excel(
+            fin,
+            sheet_name=key,
+            skiprows=0,
+            engine="calamine",
+        )
 
     scen = pd.read_excel(scen_db, sheet_name="scenario_tech_definition", skiprows=0)
 
@@ -479,9 +496,7 @@ def scen2dd(
 
         param_outdd.append(
             getzlims(
-                pd.read_excel(
-                    fin, sheet_name=tech_type + "_lim_z", skiprows=0, engine="calamine"
-                ),
+                read_limit_table(tech_type, "lim_z"),
                 techs,
                 zones,
                 agg_countries=agg_countries
@@ -490,12 +505,7 @@ def scen2dd(
 
         if exist_cap:
             zlims = getzlims(
-                pd.read_excel(
-                    fin,
-                    sheet_name=tech_type + "_exist_z",
-                    skiprows=0,
-                    engine="calamine",
-                ),
+                read_limit_table(tech_type, "exist_z"),
                 techs,
                 zones,
                 agg_countries=agg_countries
@@ -506,12 +516,7 @@ def scen2dd(
 
             if tech_type == "gen":
                 rlims = getrlims(
-                    pd.read_excel(
-                        fin,
-                        sheet_name=tech_type + "_exist_r",
-                        skiprows=0,
-                        engine="calamine",
-                    ),
+                    read_limit_table(tech_type, "exist_r"),
                     techs,
                     zones,
                     exist_agg,

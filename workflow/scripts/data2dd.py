@@ -116,7 +116,14 @@ scen2dd(
     esys_cap=False,
     exist_cap=True,
     exist_agg=snakemake.wildcards.spatial,
-    agg_countries=agg_countries
+    agg_countries=agg_countries,
+    limit_files={
+        "gen_lim_z": snakemake.input.gen_lim_z,
+        "gen_exist_z": snakemake.input.gen_exist_z,
+        "gen_exist_r": snakemake.input.gen_exist_r,
+        "store_lim_z": snakemake.input.store_lim_z,
+        "store_exist_z": snakemake.input.store_exist_z,
+    },
 )
 """
 trans_links(
