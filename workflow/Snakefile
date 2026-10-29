@@ -131,8 +131,6 @@ localrules:
     build_highres_input,
     build_transmission,
     build_NO_demand,
-    run_gams,
-
 
 rule all:
     input:
@@ -425,7 +423,7 @@ rule build_technoeconomic_inputs:
         database="resources/highres_technoeconomic_database_upd.ods",
         europedemandcsvlocation="resources/WIMBY_demand_2010_mockData.csv",
         norway_demand_MW=rules.build_NO_demand.output.norway_hourly_demand_MW,
-        co2_targets_db="resources/europe_co2_targets.csv",
+        co2_targets_db="resources/NORBAT_co2_targets.csv",
         vre_connection_dists=rules.build_vre_cf_inputs.output.vre_connection_dists,
         data2dd="workflow/scripts/data2dd_funcs.py",
         gen_lim_z=rules.build_existLimits.output.gen_lim_z,
@@ -738,7 +736,7 @@ rule run_gams:
         EV_soc_max=config["parameters"]["EV_soc_max"],
     resources:
         mem_mb=250000,
-        runtime=4320, # 3 days in minutes
+        runtime=600, # 3 days in minutes
     threads: 46
     log:
         lst=str(modelpath) + "/highres.lst",
